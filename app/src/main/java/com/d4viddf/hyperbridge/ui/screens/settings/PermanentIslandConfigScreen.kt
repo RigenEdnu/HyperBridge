@@ -49,11 +49,13 @@ fun PermanentIslandConfigScreen(
     val isEnabled by prefs.isPermanentIslandEnabledFlow.collectAsState(initial = false)
     val islandWidth by prefs.permanentIslandWidthFlow.collectAsState(initial = 0)
     val hideInLandscape by prefs.hidePermanentIslandLandscapeFlow.collectAsState(initial = false)
+    val lockPortraitLandscape by prefs.lockIslandPortraitInLandscapeFlow.collectAsState(initial = false)
 
     PermanentIslandConfigContent(
         isEnabled = isEnabled,
         islandWidth = islandWidth,
         hideInLandscape = hideInLandscape,
+        lockPortraitLandscape = lockPortraitLandscape,
         onEnabledChange = { checked ->
             scope.launch {
                 prefs.setPermanentIslandEnabled(checked)
@@ -69,6 +71,11 @@ fun PermanentIslandConfigScreen(
                 prefs.setHidePermanentIslandLandscape(hide)
             }
         },
+        onLockPortraitLandscapeChange = { lock ->
+            scope.launch {
+                prefs.setLockIslandPortraitInLandscape(lock)
+            }
+        },
         onBack = onBack
     )
 }
@@ -79,9 +86,11 @@ fun PermanentIslandConfigContent(
     isEnabled: Boolean,
     islandWidth: Int,
     hideInLandscape: Boolean,
+    lockPortraitLandscape: Boolean,
     onEnabledChange: (Boolean) -> Unit,
     onWidthChange: (Int) -> Unit,
     onHideInLandscapeChange: (Boolean) -> Unit,
+    onLockPortraitLandscapeChange: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     var sliderValue by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
@@ -176,6 +185,29 @@ fun PermanentIslandConfigContent(
                                 onCheckedChange = onHideInLandscapeChange
                             )
                         }
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.permanent_island_lock_portrait_landscape),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                )
+                                Text(
+                                    text = stringResource(R.string.permanent_island_lock_portrait_landscape_desc),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = lockPortraitLandscape,
+                                onCheckedChange = onLockPortraitLandscapeChange
+                            )
+                        }
                     }
                 }
             }
@@ -197,9 +229,11 @@ fun PermanentIslandConfigScreenPreview() {
             isEnabled = true,
             islandWidth = 10,
             hideInLandscape = false,
+            lockPortraitLandscape = false,
             onEnabledChange = {},
             onWidthChange = {},
             onHideInLandscapeChange = {},
+            onLockPortraitLandscapeChange = {},
             onBack = {}
         )
     }

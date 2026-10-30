@@ -509,6 +509,7 @@ class AppPreferences(context: Context) {
     private val SHOW_PERMANENT_ISLAND = "show_permanent_island"
     private val PERMANENT_ISLAND_WIDTH = "permanent_island_width"
     private val HIDE_PERMANENT_ISLAND_LANDSCAPE = "hide_permanent_island_landscape"
+    private val LOCK_ISLAND_PORTRAIT_IN_LANDSCAPE = "lock_island_portrait_in_landscape"
 
     val isPermanentIslandEnabledFlow: Flow<Boolean> = dao.getSettingFlow(SHOW_PERMANENT_ISLAND)
         .map { it?.toBoolean() ?: false }
@@ -517,6 +518,9 @@ class AppPreferences(context: Context) {
         .map { it?.toIntOrNull() ?: 0 }
 
     val hidePermanentIslandLandscapeFlow: Flow<Boolean> = dao.getSettingFlow(HIDE_PERMANENT_ISLAND_LANDSCAPE)
+        .map { it?.toBoolean() ?: false }
+
+    val lockIslandPortraitInLandscapeFlow: Flow<Boolean> = dao.getSettingFlow(LOCK_ISLAND_PORTRAIT_IN_LANDSCAPE)
         .map { it?.toBoolean() ?: false }
 
     suspend fun setPermanentIslandEnabled(value: Boolean) {
@@ -531,8 +535,16 @@ class AppPreferences(context: Context) {
         save(HIDE_PERMANENT_ISLAND_LANDSCAPE, value.toString())
     }
 
+    suspend fun setLockIslandPortraitInLandscape(value: Boolean) {
+        save(LOCK_ISLAND_PORTRAIT_IN_LANDSCAPE, value.toString())
+    }
+
     fun hidePermanentIslandLandscapeSync(): Boolean {
         return memoryCache[HIDE_PERMANENT_ISLAND_LANDSCAPE]?.toBoolean() ?: false
+    }
+
+    fun lockIslandPortraitInLandscapeSync(): Boolean {
+        return memoryCache[LOCK_ISLAND_PORTRAIT_IN_LANDSCAPE]?.toBoolean() ?: false
     }
 
     // ========================================================================

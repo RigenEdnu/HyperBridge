@@ -43,7 +43,9 @@ class PermanentIslandManager(
     private var hasNativeIsland = false
     private var currentWidth = 0
     private var isHideInLandscapeEnabled = false
+    private var isLockPortraitInLandscapeEnabled = false
     private var pendingDispatchJob: Job? = null
+    private val overlayManager = LandscapePortraitOverlayManager(context)
 
     init {
         scope.launch {
@@ -67,10 +69,21 @@ class PermanentIslandManager(
             }
         }
         scope.launch {
+            preferences.lockIslandPortraitInLandscapeFlow.collectLatest { lock ->
+                synchronized(this@PermanentIslandManager) {
+                    if (isLockPortraitInLandscapeEnabled != lock) {
+                        isLockPortraitInLandscapeEnabled = lock
+                        updateStateLocked()
+                    }
+                }
+            }
+        }
+        scope.launch {
             preferences.permanentIslandWidthFlow.collectLatest { width ->
                 synchronized(this@PermanentIslandManager) {
                     if (currentWidth != width) {
                         currentWidth = width
+                        overlayManager.updateWidth(width)
                         if (isIslandActive) {
                             dispatchPermanentIsland()
                         }
@@ -103,7 +116,9 @@ class PermanentIslandManager(
     // when a bridged island collapses or expires (removing it would leave a gap until the TTL).
     private fun desiredActive(): Boolean {
         val isLandscape = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        return isPermanentIslandEnabled && !hasNativeIsland && !(isHideInLandscapeEnabled && isLandscape)
+        // If locking portrait island in landscape via custom overlay is enabled, suppress the native SystemUI permanent island during landscape
+        val suppressForOverlay = isLockPortraitInLandscapeEnabled && isLandscape
+        return isPermanentIslandEnabled && !hasNativeIsland && !(isHideInLandscapeEnabled && isLandscape) && !suppressForOverlay
     }
 
     @Synchronized
@@ -112,6 +127,7 @@ class PermanentIslandManager(
         hasNativeIsland = hasNative
         val shouldShow = desiredActive()
         val isLandscape = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        checkOverlayState(isLandscape)
         if (shouldShow && isIslandPresent && refresh) {
             // Present but maybe not visible: re-assert in place (no remove first, so no
             // rapid cancel->post to swallow). Same id + content updates the residual island.
@@ -127,7 +143,18 @@ class PermanentIslandManager(
         updateStateLocked()
     }
 
+    private fun checkOverlayState(isLandscape: Boolean) {
+        if (isLockPortraitInLandscapeEnabled && isLandscape && isPermanentIslandEnabled && !hasNativeIsland) {
+            overlayManager.updateWidth(currentWidth)
+            overlayManager.show()
+        } else {
+            overlayManager.hide()
+        }
+    }
+
     private fun updateStateLocked() {
+        val isLandscape = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        checkOverlayState(isLandscape)
         if (desiredActive()) {
             if (!isIslandActive) {
                 isIslandActive = true
@@ -209,5 +236,10 @@ class PermanentIslandManager(
         } catch (e: Exception) {
             Log.e(TAG, "Error removing permanent island", e)
         }
+    }
+
+    @Synchronized
+    fun cleanup() {
+        overlayManager.hide()
     }
 }
